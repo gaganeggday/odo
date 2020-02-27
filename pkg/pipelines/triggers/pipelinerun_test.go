@@ -21,7 +21,7 @@ func TestCreateDevCDPipelineRun(t *testing.T) {
 			Resources:          createDevResource("REPLACE_IMAGE:$(params.gitref)"),
 		},
 	}
-	template := createDevCDPipelineRun(sName)
+	template := createDevCDPipelineRun(sName, "REPLACE_IMAGE")
 	if diff := cmp.Diff(validDevCDPipeline, template); diff != "" {
 		t.Fatalf("createDevCDPipelineRun failed:\n%s", diff)
 	}
@@ -42,7 +42,7 @@ func TestCreateDevCIPipelineRun(t *testing.T) {
 			Resources: createDevResource("REPLACE_IMAGE:$(params.gitref)-$(params.gitsha)"),
 		},
 	}
-	template := createDevCIPipelineRun(sName)
+	template := createDevCIPipelineRun(sName, "REPLACE_IMAGE")
 	if diff := cmp.Diff(validDevCIPipelineRun, template); diff != "" {
 		t.Fatalf("createDevCIPipelineRun failed:\n%s", diff)
 	}
@@ -54,7 +54,7 @@ func TestCreateStageCDPipelineRUn(t *testing.T) {
 		ObjectMeta: createObjectMeta("stage-cd-pipeline-run-$(uid)"),
 		Spec: pipelinev1.PipelineRunSpec{
 			ServiceAccountName: sName,
-			PipelineRef:        createPipelineRef("stage-ci-pipeline"),
+			PipelineRef:        createPipelineRef("stage-cd-pipeline"),
 			Resources:          createStageResources(),
 		},
 	}

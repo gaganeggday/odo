@@ -16,7 +16,7 @@ var (
 func TestCreateDevCDDeployTemplate(t *testing.T) {
 	validDevCDTemplate := triggersv1.TriggerTemplate{
 		TypeMeta:   triggerTemplateTypeMeta,
-		ObjectMeta: meta.CreateObjectMeta("testns", "dev-cd-deploy-from-master-Template"),
+		ObjectMeta: meta.CreateObjectMeta("testns", "dev-cd-deploy-from-master-template"),
 		Spec: triggersv1.TriggerTemplateSpec{
 			Params: []pipelinev1.ParamSpec{
 				pipelinev1.ParamSpec{
@@ -35,13 +35,13 @@ func TestCreateDevCDDeployTemplate(t *testing.T) {
 
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCDResourcetemplate(serviceAccName),
+					RawMessage: createDevCDResourcetemplate(serviceAccName, "REPLACE_IMAGE"),
 				},
 			},
 		},
 	}
 
-	template := createDevCDDeployTemplate("testns", serviceAccName)
+	template := createDevCDDeployTemplate("testns", serviceAccName, "REPLACE_IMAGE")
 	if diff := cmp.Diff(validDevCDTemplate, template); diff != "" {
 		t.Fatalf("CreateDevCDDeployTemplate failed:\n%s", diff)
 	}
@@ -74,12 +74,12 @@ func TestCreatedevCIBuildPRTemplate(t *testing.T) {
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCIResourceTemplate(serviceAccName),
+					RawMessage: createDevCIResourceTemplate(serviceAccName, "REPLACE_IMAGE"),
 				},
 			},
 		},
 	}
-	template := createDevCIBuildPRTemplate("testns", serviceAccName)
+	template := createDevCIBuildPRTemplate("testns", serviceAccName, "REPLACE_IMAGE")
 	if diff := cmp.Diff(validdevCIPRTemplate, template); diff != "" {
 		t.Fatalf("CreatedevCIBuildPRTemplate failed:\n%s", diff)
 	}

@@ -66,23 +66,45 @@ func TestValidateBootstrapOptions(t *testing.T) {
 }
 func TestBootstrapCommandWithMissingParams(t *testing.T) {
 	cmdTests := []struct {
+		desc    string
 		flags   []keyValuePair
 		wantErr string
 	}{
-		{[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"), flag("dockerconfigjson", "~/"),
-			flag("deployment-path", "foo")}, `Required flag(s) "git-repo" have/has not been set`},
-		{[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"), flag("git-repo", "example/repo"),
-			flag("deployment-path", "foo")}, `Required flag(s) "dockerconfigjson" have/has not been set`},
-		{[]keyValuePair{flag("quay-username", "example"), flag("dockerconfigjson", "~/"), flag("git-repo", "example/repo"),
-			flag("deployment-path", "foo")}, `Required flag(s) "github-token" have/has not been set`},
-		{[]keyValuePair{flag("github-token", "abc123"), flag("dockerconfigjson", "~/"), flag("git-repo", "example/repo"),
-			flag("deployment-path", "foo")}, `Required flag(s) "quay-username" have/has not been set`},
+		{"Missing git-repo flag",
+			[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"),
+				flag("dockerconfigjson", "~/"), flag("image-repo", "foo/bar/bar")},
+			`Required flag(s) "git-repo" have/has not been set`},
+		{"Missing dockerconfigjson flag",
+			[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"),
+				flag("git-repo", "example/repo"), flag("image-repo", "foo/bar/bar")},
+			`Required flag(s) "dockerconfigjson" have/has not been set`},
+		{"Missing github-token flag",
+			[]keyValuePair{flag("quay-username", "example"), flag("dockerconfigjson", "~/"),
+				flag("git-repo", "example/repo"), flag("image-repo", "foo/bar/bar")},
+			`Required flag(s) "github-token" have/has not been set`},
+		{"Missing quay-username",
+			[]keyValuePair{flag("github-token", "abc123"), flag("dockerconfigjson", "~/"),
+				flag("git-repo", "example/repo"), flag("image-repo", "foo/bar/bar")},
+			`Required flag(s) "quay-username" have/has not been set`},
+		{"Missing image-repo",
+			[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"),
+				flag("dockerconfigjson", "~/"), flag("git-repo", "example/repo")},
+			`Required flag(s) "image-repo" have/has not been set`},
+		/*
+			{"Got everything",
+				[]keyValuePair{flag("quay-username", "example"), flag("github-token", "abc123"),
+					flag("dockerconfigjson", "~/"), flag("git-repo", "example/repo"),
+					flag("image-repo", "foo/bar/bar")},
+				`Required flag(s) "image-repo" have/has not been set`},
+		*/
 	}
 	for _, tt := range cmdTests {
-		_, _, err := executeCommand(NewCmdBootstrap("bootstrap", "odo pipelines bootstrap"), tt.flags...)
-		if err.Error() != tt.wantErr {
-			t.Errorf("got %s, want %s", err, tt.wantErr)
-		}
+		t.Run(tt.desc, func(t *testing.T) {
+			_, _, err := executeCommand(NewCmdBootstrap("bootstrap", "odo pipelines bootstrap"), tt.flags...)
+			if err.Error() != tt.wantErr {
+				t.Errorf("got %s, want %s", err, tt.wantErr)
+			}
+		})
 	}
 }
 

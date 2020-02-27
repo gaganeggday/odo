@@ -35,6 +35,7 @@ type BootstrapOptions struct {
 	githubToken        string
 	quayIOAuthFilename string
 	skipChecks         bool
+	imageRepo          string
 	// generic context options common to all commands
 	*genericclioptions.Context
 }
@@ -70,6 +71,7 @@ func (bo *BootstrapOptions) Run() error {
 		DeploymentPath:   bo.deploymentPath,
 		GithubToken:      bo.githubToken,
 		GitRepo:          bo.gitRepo,
+		ImageRepo:        bo.imageRepo,
 		Prefix:           bo.prefix,
 		QuayAuthFileName: bo.quayIOAuthFilename,
 		QuayUserName:     bo.quayUsername,
@@ -104,5 +106,7 @@ func NewCmdBootstrap(name, fullName string) *cobra.Command {
 	bootstrapCmd.Flags().StringVar(&o.deploymentPath, "deployment-path", "", "deployment folder path name")
 	bootstrapCmd.MarkFlagRequired("deployment-path")
 	bootstrapCmd.Flags().BoolVarP(&o.skipChecks, "skip-checks", "b", false, "skip Tekton installation checks")
+	bootstrapCmd.Flags().StringVar(&o.imageRepo, "image-repo", "", "image repository in this form <registry>/<username>/<repository>")
+	bootstrapCmd.MarkFlagRequired("image-repo")
 	return bootstrapCmd
 }
