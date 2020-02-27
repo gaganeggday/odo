@@ -167,6 +167,11 @@ test-cmd-project:
 test-cmd-app:
 	ginkgo $(GINKGO_FLAGS) -focus="odo app command tests" tests/integration/
 
+# Run odo pipelines command tests
+.PHONY: test-cmd-pipelines
+test-cmd-pipelines:
+	ginkgo $(GINKGO_FLAGS) -focus="odo pipelines command tests" tests/integration/	
+
 # Run odo component command tests
 .PHONY: test-cmd-cmp
 test-cmd-cmp:

@@ -55,6 +55,9 @@ done
 ## Missing wildfly in OpenShift Adding it manually to cluster Please remove once wildfly is again visible
 oc apply -n openshift -f https://raw.githubusercontent.com/openshift/library/master/arch/x86_64/community/wildfly/imagestreams/wildfly-centos7.json
 
+oc apply -f https://storage.googleapis.com/tekton-releases/pipeline/latest/release.notags.yaml
+oc apply -f https://github.com/tektoncd/triggers/releases/download/v0.2.1/release.yaml
+
 # Create secret in cluster, removing if it already exists
 oc get secret $HTPASSWD_SECRET -n openshift-config &> /dev/null
 if [ $? -eq 0 ]; then
