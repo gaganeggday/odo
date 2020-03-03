@@ -6,18 +6,20 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
+	"k8s.io/apimachinery/pkg/api/resource"
 )
 
 // GenerateContainer creates a container spec that can be used when creating a pod
-func GenerateContainer(name, image string, isPrivileged bool, command, args []string, envVars []corev1.EnvVar) *corev1.Container {
+func GenerateContainer(name, image string, isPrivileged bool, command, args []string, envVars []corev1.EnvVar, resourceReqs corev1.ResourceRequirements) *corev1.Container {
 	container := &corev1.Container{
 		Name:            name,
 		Image:           image,
 		ImagePullPolicy: corev1.PullAlways,
-
-		Command: command,
-		Args:    args,
-		Env:     envVars,
+		Resources:       resourceReqs,
+		Command:         command,
+		Args:            args,
+		Env:             envVars,
 	}
 
 	if isPrivileged {
@@ -30,16 +32,11 @@ func GenerateContainer(name, image string, isPrivileged bool, command, args []st
 }
 
 // GeneratePodTemplateSpec creates a pod template spec that can be used to create a deployment spec
-func GeneratePodTemplateSpec(podName, namespace, serviceAccountName string, labels map[string]string, containers []corev1.Container) *corev1.PodTemplateSpec {
+func GeneratePodTemplateSpec(objectMeta metav1.ObjectMeta, containers []corev1.Container) *corev1.PodTemplateSpec {
 	podTemplateSpec := &corev1.PodTemplateSpec{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      podName,
-			Namespace: namespace,
-			Labels:    labels,
-		},
+		ObjectMeta: objectMeta,
 		Spec: corev1.PodSpec{
-			ServiceAccountName: serviceAccountName,
-			Containers:         containers,
+			Containers: containers,
 		},
 	}
 
@@ -50,6 +47,9 @@ func GeneratePodTemplateSpec(podName, namespace, serviceAccountName string, labe
 func GenerateDeploymentSpec(podTemplateSpec corev1.PodTemplateSpec) *appsv1.DeploymentSpec {
 	labels := podTemplateSpec.ObjectMeta.Labels
 	deploymentSpec := &appsv1.DeploymentSpec{
+		Strategy: appsv1.DeploymentStrategy{
+			Type: appsv1.RecreateDeploymentStrategyType,
+		},
 		Selector: &metav1.LabelSelector{
 			MatchLabels: labels,
 		},
@@ -57,4 +57,21 @@ func GenerateDeploymentSpec(podTemplateSpec corev1.PodTemplateSpec) *appsv1.Depl
 	}
 
 	return deploymentSpec
+}
+
+// GeneratePVCSpec creates a pvc spec
+func GeneratePVCSpec(quantity resource.Quantity) *corev1.PersistentVolumeClaimSpec {
+
+	pvcSpec := &corev1.PersistentVolumeClaimSpec{
+		Resources: corev1.ResourceRequirements{
+			Requests: corev1.ResourceList{
+				corev1.ResourceStorage: quantity,
+			},
+		},
+		AccessModes: []corev1.PersistentVolumeAccessMode{
+			corev1.ReadWriteOnce,
+		},
+	}
+
+	return pvcSpec
 }

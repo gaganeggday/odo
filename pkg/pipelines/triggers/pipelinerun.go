@@ -22,8 +22,8 @@ func createDevCDPipelineRun(saName, imageRepo string) pipelinev1.PipelineRun {
 			Resources:          createDevResource(imageRepo + ":$(params.gitref)"),
 		},
 	}
-
 }
+
 func createDevCIPipelineRun(saName, imageRepo string) pipelinev1.PipelineRun {
 	return pipelinev1.PipelineRun{
 		TypeMeta:   pipelineRunTypeMeta,

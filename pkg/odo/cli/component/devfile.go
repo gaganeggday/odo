@@ -2,84 +2,81 @@ package component
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/openshift/odo/pkg/devfile"
-	"github.com/openshift/odo/pkg/odo/cli/project"
-	"github.com/openshift/odo/pkg/odo/genericclioptions"
-	"github.com/spf13/cobra"
-	ktemplates "k8s.io/kubernetes/pkg/kubectl/util/templates"
+
+	"github.com/openshift/odo/pkg/devfile/adapters"
+	"github.com/openshift/odo/pkg/log"
+	"github.com/openshift/odo/pkg/util"
+	"github.com/pkg/errors"
 )
 
-// examples
-var pushDevFileExample = ktemplates.Examples(`
-Devfile support is an experimental feature which extends the support for the use of Che devfiles in odo
-for performing various odo operations.
+/*
+Devfile support is an experimental feature which extends the support for the
+use of Che devfiles in odo for performing various odo operations.
 
 The devfile support progress can be tracked by:
 https://github.com/openshift/odo/issues/2467
 
-Please note that this feature is currently under development and the "push-devfile" command has been
-temporarily exposed only for experimental purposes, and may/will be removed in future releases.
-  `)
+Please note that this feature is currently under development and the "--devfile"
+flag is exposed only if the experimental mode in odo is enabled.
 
-const PushDevfileRecommendedCommandName = "push-devfile"
+The behaviour of this feature is subject to change as development for this
+feature progresses.
+*/
 
-// PushDevfileOptions encapsulates odo component push-devfile  options
-type PushDevfileOptions struct {
-	devfilePath string
-	*genericclioptions.Context
-}
-
-// NewPushDevfileOptions returns new instance of PushDevfileOptions
-func NewPushDevfileOptions() *PushDevfileOptions {
-	return &PushDevfileOptions{}
-}
-
-// Complete completes  args
-func (pdo *PushDevfileOptions) Complete(name string, cmd *cobra.Command, args []string) (err error) {
-	return nil
-}
-
-// Validate validates the  parameters
-func (pdo *PushDevfileOptions) Validate() (err error) {
-	return nil
-}
-
-// Run has the logic to perform the required actions as part of command
-func (pdo *PushDevfileOptions) Run() (err error) {
+// DevfilePush has the logic to perform the required actions for a given devfile
+func (po *PushOptions) DevfilePush() (err error) {
 
 	// Parse devfile
-	devObj, err := devfile.Parse(pdo.devfilePath)
+	devObj, err := devfile.Parse(po.devfilePath)
 	if err != nil {
 		return err
 	}
 
-	// Write back devfile yaml
-	err = devObj.WriteYamlDevfile()
+	componentName, err := getComponentName()
 	if err != nil {
 		return err
 	}
 
-	return nil
+	spinner := log.SpinnerNoSpin(fmt.Sprintf("Push devfile component %s", componentName))
+	defer spinner.End(false)
+
+	devfileHandler, err := adapters.NewPlatformAdapter(componentName, devObj)
+	if err != nil {
+		return err
+	}
+
+	err = devfileHandler.Start()
+	if err != nil {
+		log.Errorf(
+			"Failed to start component with name %s.\nError: %v",
+			componentName,
+			err,
+		)
+		os.Exit(1)
+	}
+
+	spinner.End(true)
+	return
 }
 
-// NewCmdPushDevfile implements odo push-devfile  command
-func NewCmdPushDevfile(name, fullName string) *cobra.Command {
-	o := NewPushDevfileOptions()
-
-	var pushDevfileCmd = &cobra.Command{
-		Use:     name,
-		Short:   "Push component using devfile.",
-		Long:    "Push component using devfile.",
-		Example: fmt.Sprintf(pushDevFileExample, fullName),
-		Args:    cobra.NoArgs,
-		Run: func(cmd *cobra.Command, args []string) {
-			genericclioptions.GenericRun(o, cmd, args)
-		},
+/*
+ * getComponentName generates a component name by using the current directory's name and manipulates it if needed so that it
+ * can be used for kubernetes resource names as well. This will likely be moved/replaced once devfile create is
+ * implemented because component name should be determined at that point.
+ */
+func getComponentName() (string, error) {
+	retVal := ""
+	currDir, err := os.Getwd()
+	if err != nil {
+		return "", errors.Wrapf(err, "unable to get component because getting current directory failed")
 	}
-
-	pushDevfileCmd.Flags().StringVar(&o.devfilePath, "devfile", "./devfile.yaml", "Path to a devfile.yaml")
-	project.AddProjectFlag(pushDevfileCmd)
-
-	return pushDevfileCmd
+	retVal = filepath.Base(currDir)
+	// Kubernetes resources require a name that satisfies DNS-1123
+	retVal = strings.TrimSpace(util.GetDNS1123Name(strings.ToLower(retVal)))
+	return retVal, nil
 }

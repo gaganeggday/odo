@@ -18,7 +18,8 @@ func TestGenerateRoute(t *testing.T) {
 			APIVersion: "route.openshift.io/v1",
 		},
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "github-webhook-event-listener",
+			Name:      "github-webhook-event-listener",
+			Namespace: "cicd-environment",
 			Labels: map[string]string{
 				"app.kubernetes.io/managed-by": "EventListener",
 				"app.kubernetes.io/part-of":    "Triggers",
@@ -39,7 +40,7 @@ func TestGenerateRoute(t *testing.T) {
 			WildcardPolicy: routev1.WildcardPolicyNone,
 		},
 	}
-	route := Generate()
+	route := Generate("cicd-environment")
 	if diff := cmp.Diff(validRoute, route); diff != "" {
 		t.Fatalf("Generate() failed:\n%s", diff)
 	}
@@ -73,14 +74,15 @@ func TestCreatRouteTargetReference(t *testing.T) {
 
 func TestCreateRouteObjectMeta(t *testing.T) {
 	validObjectMeta := metav1.ObjectMeta{
-		Name: "sampleName",
+		Name:      "sampleName",
+		Namespace: "cicd-environment",
 		Labels: map[string]string{
 			"app.kubernetes.io/managed-by": "EventListener",
 			"app.kubernetes.io/part-of":    "Triggers",
 			"eventlistener":                "cicd-event-listener",
 		},
 	}
-	objectMeta := createRouteObjectMeta("sampleName")
+	objectMeta := createRouteObjectMeta("cicd-environment", "sampleName")
 	if diff := cmp.Diff(validObjectMeta, objectMeta); diff != "" {
 		t.Fatalf("createRouteObjectMeta() failed:\n%s", diff)
 	}

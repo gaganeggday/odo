@@ -7,10 +7,10 @@ import (
 )
 
 // Generate creates a route for event listener
-func Generate() routev1.Route {
+func Generate(ns string) routev1.Route {
 	return routev1.Route{
 		TypeMeta:   createRouteTypeMeta(),
-		ObjectMeta: createRouteObjectMeta("github-webhook-event-listener"),
+		ObjectMeta: createRouteObjectMeta(ns, "github-webhook-event-listener"),
 		Spec: routev1.RouteSpec{
 			To: creatRouteTargetReference(
 				"Service",
@@ -46,10 +46,11 @@ func createRouteTypeMeta() metav1.TypeMeta {
 	}
 }
 
-func createRouteObjectMeta(name string) metav1.ObjectMeta {
+func createRouteObjectMeta(ns, name string) metav1.ObjectMeta {
 	return metav1.ObjectMeta{
-		Name:   name,
-		Labels: createRouteLabels(),
+		Name:      name,
+		Namespace: ns,
+		Labels:    createRouteLabels(),
 	}
 }
 

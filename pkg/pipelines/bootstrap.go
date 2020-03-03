@@ -19,13 +19,17 @@ import (
 	"sigs.k8s.io/yaml"
 )
 
-var (
-	dockerSecretName = "regcred"
-	saName           = "pipeline"
-	roleName         = "tekton-triggers-openshift-demo"
-	roleBindingName  = "tekton-triggers-openshift-binding"
-
+const (
+	dockerSecretName     = "regcred"
+	saName               = "pipeline"
+	roleName             = "pipelines-service-role"
+	roleBindingName      = "pipelines-service-role-binding"
+	devRoleBindingName   = "pipeline-edit-dev"
+	stageRoleBindingName = "pipeline-edit-stage"
 	// PolicyRules to be bound to service account
+)
+
+var (
 	rules = []v1rbac.PolicyRule{
 		v1rbac.PolicyRule{
 			APIGroups: []string{"tekton.dev"},
@@ -40,22 +44,22 @@ var (
 	}
 )
 
-// BootstrapOptions is a struct that provides the optional flags
-type BootstrapOptions struct {
-	DeploymentPath   string
-	ImageRepo        string
-	GithubToken      string
-	GitRepo          string
-	Prefix           string
-	QuayAuthFileName string
-	QuayUserName     string
-	SkipChecks       bool
+// BootstrapParameters is a struct that provides the optional flags
+type BootstrapParameters struct {
+	DeploymentPath           string
+	GithubToken              string
+	GitRepo                  string
+	InternalRegistryHostname string
+	ImageRepo                string
+	Prefix                   string
+	DockerConfigJSONFileName string
+	SkipChecks               bool
 }
 
 // Bootstrap is the main driver for getting OpenShift pipelines for GitOps
 // configured with a basic configuration.
-func Bootstrap(o *BootstrapOptions) error {
-	// First, check for Tekton.  We proceed only if Tekton is installed
+func Bootstrap(o *BootstrapParameters) error {
+
 	if !o.SkipChecks {
 		installed, err := checkTektonInstall()
 		if err != nil {
@@ -66,8 +70,8 @@ func Bootstrap(o *BootstrapOptions) error {
 		}
 	}
 
-	// Validate image repository
-	if isValid, err := validateImageRepo(o.ImageRepo); !isValid {
+	isInternalRegistry, imageRepo, err := validateImageRepo(o)
+	if err != nil {
 		return err
 	}
 
@@ -83,21 +87,14 @@ func Bootstrap(o *BootstrapOptions) error {
 	}
 	outputs = append(outputs, githubAuth)
 
-	// Create Docker Secret
-	dockerSecret, err := createDockerSecret(o.QuayAuthFileName, namespaces["cicd"])
-	if err != nil {
-		return err
-	}
-	outputs = append(outputs, dockerSecret)
-
 	// Create Tasks
-	tasks := tasks.Generate(githubAuth.GetName(), namespaces["cicd"])
+	tasks := tasks.Generate(githubAuth.GetName(), namespaces["cicd"], isInternalRegistry)
 	for _, task := range tasks {
 		outputs = append(outputs, task)
 	}
 
 	// Create trigger templates
-	templates := triggers.GenerateTemplates(namespaces["cicd"], saName, o.ImageRepo)
+	templates := triggers.GenerateTemplates(namespaces["cicd"], saName, imageRepo)
 	for _, template := range templates {
 		outputs = append(outputs, template)
 	}
@@ -116,24 +113,71 @@ func Bootstrap(o *BootstrapOptions) error {
 	outputs = append(outputs, eventListener)
 
 	// Create route
-	route := routes.Generate()
+	route := routes.Generate(namespaces["cicd"])
 	outputs = append(outputs, route)
 
-	//  Create Service Account, Role, Role Bindings, and ClusterRole Bindings
-	outputs = append(outputs, createRoleBindings(namespaces)...)
+	// Create secret, role binding, namespaces for using image repo
+	sa := createServiceAccount(meta.NamespacedName(namespaces["cicd"], saName))
+	manifests, err := createManifestsForImageRepo(sa, isInternalRegistry, imageRepo, o, namespaces)
+	if err != nil {
+		return err
+	}
+	outputs = append(outputs, manifests...)
+
+	//  Create Role, Role Bindings, and ClusterRole Bindings
+	outputs = append(outputs, createRoleBindings(namespaces, sa)...)
 
 	return marshalOutputs(os.Stdout, outputs)
 }
 
-func createRoleBindings(ns map[string]string) []interface{} {
+func createRoleBindings(ns map[string]string, sa *corev1.ServiceAccount) []interface{} {
 	out := make([]interface{}, 0)
-	sa := createServiceAccount(meta.NamespacedName(ns["cicd"], saName), dockerSecretName)
-	out = append(out, sa)
+
 	role := createRole(meta.NamespacedName(ns["cicd"], roleName), rules)
 	out = append(out, role)
 	out = append(out, createRoleBinding(meta.NamespacedName(ns["cicd"], roleBindingName), sa, role.Kind, role.Name))
 	out = append(out, createRoleBinding(meta.NamespacedName(ns["cicd"], "edit-clusterrole-binding"), sa, "ClusterRole", "edit"))
+	out = append(out, createRoleBinding(meta.NamespacedName(ns["dev"], devRoleBindingName), sa, "ClusterRole", "edit"))
+	out = append(out, createRoleBinding(meta.NamespacedName(ns["stage"], stageRoleBindingName), sa, "ClusterRole", "edit"))
+
 	return out
+}
+
+// createManifestsForImageRepo creates manifests like namespaces, secret, and role bindng for using image repo
+func createManifestsForImageRepo(sa *corev1.ServiceAccount, isInternalRegistry bool, imageRepo string, o *BootstrapParameters, namespaces map[string]string) ([]interface{}, error) {
+	out := make([]interface{}, 0)
+
+	if isInternalRegistry {
+		// add sa to outputs
+		out = append(out, sa)
+		// Provide access to service account for using internal registry
+		internalRegistryNamespace := strings.Split(imageRepo, "/")[1]
+
+		clientSet, err := getClientSet()
+		if err != nil {
+			return nil, err
+		}
+		namespaceExists, err := checkNamespace(clientSet, internalRegistryNamespace)
+		if err != nil {
+			return nil, err
+		}
+		if !namespaceExists {
+			out = append(out, createNamespace(internalRegistryNamespace))
+		}
+
+		out = append(out, createRoleBinding(meta.NamespacedName(internalRegistryNamespace, "internal-registry-binding"), sa, "ClusterRole", "edit"))
+	} else {
+		// Add secret to service account if external registry is used
+		dockerSecret, err := createDockerSecret(o.DockerConfigJSONFileName, namespaces["cicd"])
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, dockerSecret)
+		// add secret and sa to outputs
+		out = append(out, addSecretToSA(sa, dockerSecretName))
+	}
+
+	return out, nil
 }
 
 func createPipelines(ns map[string]string, deploymentPath string) []interface{} {
@@ -147,9 +191,12 @@ func createPipelines(ns map[string]string, deploymentPath string) []interface{} 
 }
 
 // createDockerSecret creates Docker secret
-func createDockerSecret(quayIOAuthFilename, ns string) (*corev1.Secret, error) {
+func createDockerSecret(dockerConfigJSONFileName, ns string) (*corev1.Secret, error) {
+	if dockerConfigJSONFileName == "" {
+		return nil, errors.New("failed to generate path to file: --dockerconfigjson flag is not provided")
+	}
 
-	authJSONPath, err := homedir.Expand(quayIOAuthFilename)
+	authJSONPath, err := homedir.Expand(dockerConfigJSONFileName)
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate path to file: %w", err)
 	}
@@ -202,15 +249,46 @@ func marshalOutputs(out io.Writer, outputs []interface{}) error {
 	return nil
 }
 
-func validateImageRepo(url string) (bool, error) {
-	urlComponents := strings.Split(url, "/")
-	if len(urlComponents) < 3 {
-		return false, fmt.Errorf("failed to parse image repo:%s, expected image repository in the form <registry>/<username>/<repository>", url)
+// validateImageRepo validates the input image repo.  It determines if it is
+// for internal registry and prepend internal registry hostname if neccessary.
+func validateImageRepo(o *BootstrapParameters) (bool, string, error) {
+	components := strings.Split(o.ImageRepo, "/")
+
+	// repo url has minimum of 2 components
+	if len(components) < 2 {
+		return false, "", imageRepoValidationError(o.ImageRepo)
 	}
-	for _, v := range urlComponents {
+
+	for _, v := range components {
+		// check for empty components
 		if strings.TrimSpace(v) == "" {
-			return false, fmt.Errorf("failed to parse image repo:%s, expected image repository in the form <registry>/<username>/<repository>", url)
+			return false, "", imageRepoValidationError(o.ImageRepo)
+		}
+		// check for white spaces
+		if len(v) > len(strings.TrimSpace(v)) {
+			return false, "", imageRepoValidationError(o.ImageRepo)
 		}
 	}
-	return true, nil
+
+	if len(components) == 2 {
+		if components[0] == "docker.io" || components[0] == "quay.io" {
+			// we recognize docker.io and quay.io.  It is missing one component
+			return false, "", imageRepoValidationError(o.ImageRepo)
+		}
+		// We have format like <project>/<app> which is an internal registry.
+		// We prepend the internal registry hostname.
+		return true, o.InternalRegistryHostname + "/" + o.ImageRepo, nil
+	}
+
+	// Check the first component to see if it is an internal registry
+	if len(components) == 3 {
+		return components[0] == o.InternalRegistryHostname, o.ImageRepo, nil
+	}
+
+	// > 3 components.  invalid repo
+	return false, "", imageRepoValidationError(o.ImageRepo)
+}
+
+func imageRepoValidationError(imageRepo string) error {
+	return fmt.Errorf("failed to parse image repo:%s, expected image repository in the form <registry>/<username>/<repository> or <project>/<app> for internal registry", imageRepo)
 }
