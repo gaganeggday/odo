@@ -8,15 +8,14 @@ import (
 )
 
 func TestValidateImageRepo(t *testing.T) {
-
 	errorMsg := "failed to parse image repo:%s, expected image repository in the form <registry>/<username>/<repository> or <project>/<app> for internal registry"
 
 	tests := []struct {
-		description                string
-		options                    BootstrapParameters
-		expectedError              string
-		expectedIsInternalRegistry bool
-		expectedImageRepo          string
+		description       string
+		options           BootstrapParameters
+		expectedError     string
+		internalRegistry  bool
+		expectedImageRepo string
 	}{
 		{
 			"Valid image regsitry URL",
@@ -161,18 +160,18 @@ func TestValidateImageRepo(t *testing.T) {
 	}
 	for _, test := range tests {
 		t.Run(test.description, func(t *testing.T) {
-			isInternalRegistry, imageRepo, error := validateImageRepo(&test.options)
-			if diff := cmp.Diff(isInternalRegistry, test.expectedIsInternalRegistry); diff != "" {
-				t.Errorf("validateImageRepo() failed:\n%s", diff)
+			internal, imageRepo, err := validateImageRepo(&test.options)
+			if internal != test.internalRegistry {
+				t.Errorf("internal got %v, want %v", internal, test.internalRegistry)
 			}
-			if diff := cmp.Diff(imageRepo, test.expectedImageRepo); diff != "" {
-				t.Errorf("validateImageRepo() failed:\n%s", diff)
+			if imageRepo != test.expectedImageRepo {
+				t.Errorf("imageRepo got %v, want %v", imageRepo, test.internalRegistry)
 			}
-			errorString := ""
-			if error != nil {
-				errorString = error.Error()
+			errString := ""
+			if err != nil {
+				errString = err.Error()
 			}
-			if diff := cmp.Diff(errorString, test.expectedError); diff != "" {
+			if diff := cmp.Diff(errString, test.expectedError); diff != "" {
 				t.Errorf("validateImageRepo() failed:\n%s", diff)
 			}
 		})

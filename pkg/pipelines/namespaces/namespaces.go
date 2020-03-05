@@ -1,4 +1,4 @@
-package pipelines
+package namespaces
 
 import (
 	"fmt"
@@ -15,15 +15,9 @@ var namespaceBaseNames = map[string]string{
 	"cicd":  "cicd-environment",
 }
 
-func createNamespaces(names []string) []*corev1.Namespace {
-	ns := []*corev1.Namespace{}
-	for _, n := range names {
-		ns = append(ns, createNamespace(n))
-	}
-	return ns
-}
-
-func namespaceNames(prefix string) map[string]string {
+// Prefixed creates and returns a map of named environments to their prefixed
+// namespaces.
+func Prefixed(prefix string) map[string]string {
 	prefixedNames := make(map[string]string)
 	for k, v := range namespaceBaseNames {
 		prefixedNames[k] = fmt.Sprintf("%s%s", prefix, v)
@@ -31,7 +25,8 @@ func namespaceNames(prefix string) map[string]string {
 	return prefixedNames
 }
 
-func createNamespace(name string) *corev1.Namespace {
+// Create creates and returns a corev1.Namespace.
+func Create(name string) *corev1.Namespace {
 	ns := &corev1.Namespace{
 		TypeMeta: meta.TypeMeta("Namespace", "v1"),
 		ObjectMeta: metav1.ObjectMeta{
@@ -41,19 +36,8 @@ func createNamespace(name string) *corev1.Namespace {
 	return ns
 }
 
-func getClientSet() (*kubernetes.Clientset, error) {
-	clientConfig, err := getClientConfig()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client config due to %w", err)
-	}
-	clientSet, err := kubernetes.NewForConfig(clientConfig)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get APIs client due to %w", err)
-	}
-	return clientSet, nil
-}
-
-func checkNamespace(clientSet kubernetes.Interface, name string) (bool, error) {
+// Exists returns true if the named namespace already exists in Kubernetes.
+func Exists(clientSet kubernetes.Interface, name string) (bool, error) {
 	_, err := clientSet.CoreV1().Namespaces().Get(name, metav1.GetOptions{})
 	if err != nil {
 		return false, nil

@@ -3,7 +3,6 @@ package pipelines
 import (
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
@@ -13,10 +12,11 @@ import (
 	"github.com/mitchellh/go-homedir"
 	"github.com/openshift/odo/pkg/pipelines/eventlisteners"
 	"github.com/openshift/odo/pkg/pipelines/meta"
+	"github.com/openshift/odo/pkg/pipelines/namespaces"
 	"github.com/openshift/odo/pkg/pipelines/routes"
+	"github.com/openshift/odo/pkg/pipelines/secrets"
 	"github.com/openshift/odo/pkg/pipelines/tasks"
 	"github.com/openshift/odo/pkg/pipelines/triggers"
-	"sigs.k8s.io/yaml"
 )
 
 const (
@@ -76,56 +76,56 @@ func Bootstrap(o *BootstrapParameters) error {
 	}
 
 	outputs := make([]interface{}, 0)
-	namespaces := namespaceNames(o.Prefix)
-	for _, n := range createNamespaces(values(namespaces)) {
-		outputs = append(outputs, n)
+	ns := namespaces.Prefixed(o.Prefix)
+	for _, n := range ns {
+		outputs = append(outputs, namespaces.Create(n))
 	}
 
-	githubAuth, err := createOpaqueSecret(meta.NamespacedName(namespaces["cicd"], "github-auth"), o.GithubToken)
+	githubAuth, err := secrets.CreateOpaque(meta.NamespacedName(ns["cicd"], "github-auth"), o.GithubToken)
 	if err != nil {
 		return fmt.Errorf("failed to generate path to file: %w", err)
 	}
 	outputs = append(outputs, githubAuth)
 
 	// Create Tasks
-	tasks := tasks.Generate(githubAuth.GetName(), namespaces["cicd"], isInternalRegistry)
+	tasks := tasks.Generate(githubAuth.GetName(), ns["cicd"], isInternalRegistry)
 	for _, task := range tasks {
 		outputs = append(outputs, task)
 	}
 
 	// Create trigger templates
-	templates := triggers.GenerateTemplates(namespaces["cicd"], saName, imageRepo)
+	templates := triggers.GenerateTemplates(ns["cicd"], saName, imageRepo)
 	for _, template := range templates {
 		outputs = append(outputs, template)
 	}
 
 	// Create trigger bindings
-	bindings := triggers.GenerateBindings(namespaces["cicd"])
+	bindings := triggers.GenerateBindings(ns["cicd"])
 	for _, binding := range bindings {
 		outputs = append(outputs, binding)
 	}
 
 	// Create Pipelines
-	outputs = append(outputs, createPipelines(namespaces, o.DeploymentPath)...)
+	outputs = append(outputs, createPipelines(ns, o.DeploymentPath)...)
 
 	// Create Event Listener
-	eventListener := eventlisteners.Generate(o.GitRepo, namespaces["cicd"], saName)
+	eventListener := eventlisteners.Generate(o.GitRepo, ns["cicd"], saName)
 	outputs = append(outputs, eventListener)
 
 	// Create route
-	route := routes.Generate(namespaces["cicd"])
+	route := routes.Generate(ns["cicd"])
 	outputs = append(outputs, route)
 
 	// Create secret, role binding, namespaces for using image repo
-	sa := createServiceAccount(meta.NamespacedName(namespaces["cicd"], saName))
-	manifests, err := createManifestsForImageRepo(sa, isInternalRegistry, imageRepo, o, namespaces)
+	sa := createServiceAccount(meta.NamespacedName(ns["cicd"], saName))
+	manifests, err := createManifestsForImageRepo(sa, isInternalRegistry, imageRepo, o, ns)
 	if err != nil {
 		return err
 	}
 	outputs = append(outputs, manifests...)
 
 	//  Create Role, Role Bindings, and ClusterRole Bindings
-	outputs = append(outputs, createRoleBindings(namespaces, sa)...)
+	outputs = append(outputs, createRoleBindings(ns, sa)...)
 
 	return marshalOutputs(os.Stdout, outputs)
 }
@@ -144,7 +144,7 @@ func createRoleBindings(ns map[string]string, sa *corev1.ServiceAccount) []inter
 }
 
 // createManifestsForImageRepo creates manifests like namespaces, secret, and role bindng for using image repo
-func createManifestsForImageRepo(sa *corev1.ServiceAccount, isInternalRegistry bool, imageRepo string, o *BootstrapParameters, namespaces map[string]string) ([]interface{}, error) {
+func createManifestsForImageRepo(sa *corev1.ServiceAccount, isInternalRegistry bool, imageRepo string, o *BootstrapParameters, ns map[string]string) ([]interface{}, error) {
 	out := make([]interface{}, 0)
 
 	if isInternalRegistry {
@@ -157,18 +157,18 @@ func createManifestsForImageRepo(sa *corev1.ServiceAccount, isInternalRegistry b
 		if err != nil {
 			return nil, err
 		}
-		namespaceExists, err := checkNamespace(clientSet, internalRegistryNamespace)
+		namespaceExists, err := namespaces.Exists(clientSet, internalRegistryNamespace)
 		if err != nil {
 			return nil, err
 		}
 		if !namespaceExists {
-			out = append(out, createNamespace(internalRegistryNamespace))
+			out = append(out, namespaces.Create(internalRegistryNamespace))
 		}
 
 		out = append(out, createRoleBinding(meta.NamespacedName(internalRegistryNamespace, "internal-registry-binding"), sa, "ClusterRole", "edit"))
 	} else {
 		// Add secret to service account if external registry is used
-		dockerSecret, err := createDockerSecret(o.DockerConfigJSONFileName, namespaces["cicd"])
+		dockerSecret, err := createDockerSecret(o.DockerConfigJSONFileName, ns["cicd"])
 		if err != nil {
 			return nil, err
 		}
@@ -207,7 +207,7 @@ func createDockerSecret(dockerConfigJSONFileName, ns string) (*corev1.Secret, er
 	}
 	defer f.Close()
 
-	dockerSecret, err := createDockerConfigSecret(meta.NamespacedName(ns, dockerSecretName), f)
+	dockerSecret, err := secrets.CreateDockerConfig(meta.NamespacedName(ns, dockerSecretName), f)
 	if err != nil {
 		return nil, err
 	}
@@ -232,21 +232,6 @@ func values(m map[string]string) []string {
 
 	}
 	return values
-}
-
-// marshalOutputs marshal outputs to given writer
-func marshalOutputs(out io.Writer, outputs []interface{}) error {
-	for _, r := range outputs {
-		data, err := yaml.Marshal(r)
-		if err != nil {
-			return fmt.Errorf("failed to marshal data: %w", err)
-		}
-		_, err = fmt.Fprintf(out, "%s---\n", data)
-		if err != nil {
-			return fmt.Errorf("failed to write data: %w", err)
-		}
-	}
-	return nil
 }
 
 // validateImageRepo validates the input image repo.  It determines if it is

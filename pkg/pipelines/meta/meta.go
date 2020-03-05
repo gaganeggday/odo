@@ -1,21 +1,21 @@
 package meta
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 )
 
 // TypeMeta creates v1.TypeMeta
-func TypeMeta(kind, apiVersion string) v1.TypeMeta {
-	return v1.TypeMeta{
+func TypeMeta(kind, apiVersion string) metav1.TypeMeta {
+	return metav1.TypeMeta{
 		Kind:       kind,
 		APIVersion: apiVersion,
 	}
 }
 
 // ObjectMeta creates v1.ObjectMeta
-func ObjectMeta(n types.NamespacedName) v1.ObjectMeta {
-	return v1.ObjectMeta{
+func ObjectMeta(n types.NamespacedName) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
 		Namespace: n.Namespace,
 		Name:      n.Name,
 	}

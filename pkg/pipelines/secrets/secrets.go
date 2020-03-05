@@ -1,4 +1,4 @@
-package pipelines
+package secrets
 
 import (
 	"fmt"
@@ -11,17 +11,17 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 )
 
-// createOpaqueSecret creates a Kubernetes v1/Secret with the provided name and
+// CreateOpaque creates a Kubernetes v1/Secret with the provided name and
 // body, and type Opaque.
-func createOpaqueSecret(name types.NamespacedName, data string) (*corev1.Secret, error) {
+func CreateOpaque(name types.NamespacedName, data string) (*corev1.Secret, error) {
 	r := strings.NewReader(data)
 
 	return createSecret(name, "token", corev1.SecretTypeOpaque, r)
 }
 
-// createDockerConfigSecret creates a Kubernetes v1/Secret with the provided name and
+// CreateDockerConfig creates a Kubernetes v1/Secret with the provided name and
 // body, and type DockerConfigJson.
-func createDockerConfigSecret(name types.NamespacedName, in io.Reader) (*corev1.Secret, error) {
+func CreateDockerConfig(name types.NamespacedName, in io.Reader) (*corev1.Secret, error) {
 	return createSecret(name, ".dockerconfigjson", corev1.SecretTypeDockerConfigJson, in)
 }
 

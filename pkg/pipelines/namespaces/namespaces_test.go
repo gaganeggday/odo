@@ -1,4 +1,4 @@
-package pipelines
+package namespaces
 
 import (
 	"testing"
@@ -10,7 +10,7 @@ import (
 )
 
 func TestCreateNamespace(t *testing.T) {
-	ns := createNamespace("test-environment")
+	ns := Create("test-environment")
 	want := &corev1.Namespace{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "Namespace",
@@ -22,12 +22,12 @@ func TestCreateNamespace(t *testing.T) {
 	}
 
 	if diff := cmp.Diff(want, ns); diff != "" {
-		t.Fatalf("createNamespace() failed got\n%s", diff)
+		t.Fatalf("Create() failed got\n%s", diff)
 	}
 }
 
-func TestNamespaceNames(t *testing.T) {
-	ns := namespaceNames("test-")
+func TestPrefixed(t *testing.T) {
+	ns := Prefixed("test-")
 	want := map[string]string{
 		"dev":   "test-dev-environment",
 		"stage": "test-stage-environment",
@@ -38,44 +38,28 @@ func TestNamespaceNames(t *testing.T) {
 	}
 }
 
-func TestCreateNamespaces(t *testing.T) {
-	ns := createNamespaces([]string{
-		"test-dev-environment",
-		"test-stage-environment",
-		"test-cicd-environment",
-	})
-	want := []*corev1.Namespace{
-		createNamespace("test-dev-environment"),
-		createNamespace("test-stage-environment"),
-		createNamespace("test-cicd-environment"),
-	}
-	if diff := cmp.Diff(want, ns); diff != "" {
-		t.Fatalf("createNamespaces() failed got\n%s", diff)
-	}
-}
-
-func TestCheckNamespace(t *testing.T) {
+func TestExists(t *testing.T) {
 	tests := []struct {
 		desc      string
 		namespace string
 		valid     bool
 	}{
 		{
-			"Namespace sample already exists",
+			"namespace already exists",
 			"sample",
 			true,
 		},
 		{
-			"Namespace test doesn't exist",
+			"namespace doesn't exist",
 			"test",
 			false,
 		},
 	}
-	validNamespace := createNamespace("sample")
+	validNamespace := Create("sample")
 	for _, test := range tests {
 		t.Run(test.desc, func(t *testing.T) {
 			cs := testclient.NewSimpleClientset(validNamespace)
-			namespaceExists, _ := checkNamespace(cs, test.namespace)
+			namespaceExists, _ := Exists(cs, test.namespace)
 			if diff := cmp.Diff(namespaceExists, test.valid); diff != "" {
 				t.Fatalf("checkNamespace() failed:\n%v", diff)
 			}
