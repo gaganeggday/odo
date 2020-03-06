@@ -3,6 +3,9 @@ package helper
 import (
 	"bufio"
 	"fmt"
+	"io"
+	"log"
+	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -436,4 +439,15 @@ func (oc *OcRunner) CheckForExistence(resourceName, namespace string) {
 	Eventually(session).Should(gexec.Exit(0))
 	output := string(session.Wait().Out.Contents())
 	Expect(output).To(ContainSubstring(""))
+}
+
+func (oc *OcRunner) RunOcWithInput(input io.Reader, args ...string) string {
+	session := exec.Command(oc.path, args...)
+	session.Stdin = input
+	out, err := session.CombinedOutput()
+
+	log.Printf("KEVIN!!! %s, %v\n", out, err)
+
+	Expect(err).NotTo(HaveOccurred())
+	return string(out)
 }

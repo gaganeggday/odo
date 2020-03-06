@@ -41,7 +41,6 @@ GINKGO_FLAGS_SERIAL = $(GINKGO_FLAGS_ALL) -nodes=1
 # Flags for tests that may be run in parallel
 GINKGO_FLAGS=$(GINKGO_FLAGS_ALL) -nodes=$(TEST_EXEC_NODES)
 
-
 default: bin
 
 .PHONY: debug
@@ -210,6 +209,10 @@ test-cmd-debug:
 	ginkgo $(GINKGO_FLAGS) -focus="odo debug command tests" tests/integration/
 	ginkgo $(GINKGO_FLAGS_SERIAL) -focus="odo debug command serial tests" tests/integration/debug/
 
+.PHONY: test-cmd-pipelines
+test-cmd-pipelines:
+	ginkgo $(GINKGO_FLAGS) -focus="odo pipelines command tests" tests/integration/pipelines/
+
 # Run command's integration tests irrespective of service catalog status in the cluster.
 # Service, link and login/logout command tests are not the part of this test run
 .PHONY: test-integration
@@ -241,6 +244,12 @@ test-e2e-source:
 .PHONY: test-e2e-images
 test-e2e-images:
 	ginkgo $(GINKGO_FLAGS) -focus="odo supported images e2e tests" tests/e2escenarios/
+
+# Run supported pipelines e2e tests
+.PHONY: test-e2e-pipelines
+test-e2e-pipelines:
+	ginkgo $(GINKGO_FLAGS) -focus="odo pipelines e2e tests" tests/e2escenarios/
+
 
 # Run all e2e test scenarios
 .PHONY: test-e2e-all
