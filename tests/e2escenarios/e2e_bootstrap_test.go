@@ -54,7 +54,7 @@ var _ = Describe("odo pipelines e2e tests", func() {
 				"--github-token", "abc123", "--image-repo", fmt.Sprintf("%s/taxi", project), "--skip-checks")
 
 			setupOutput := oc.RunOcWithInput(strings.NewReader(output), "apply", "-f", "-")
-			Expect(setupOutput).To(ContainSubstring("installed"))
+			Expect(setupOutput).To(ContainSubstring("rolebinding.rbac.authorization.k8s.io/pipeline-edit-stage configured"))
 		})
 
 	})

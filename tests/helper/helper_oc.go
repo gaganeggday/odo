@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"io"
-	"log"
 	"os/exec"
 	"path/filepath"
 	"regexp"
@@ -445,8 +444,6 @@ func (oc *OcRunner) RunOcWithInput(input io.Reader, args ...string) string {
 	session := exec.Command(oc.path, args...)
 	session.Stdin = input
 	out, err := session.CombinedOutput()
-
-	log.Printf("KEVIN!!! %s, %v\n", out, err)
 
 	Expect(err).NotTo(HaveOccurred())
 	return string(out)
