@@ -41,16 +41,16 @@ func TestCompleteBootstrapParameters(t *testing.T) {
 
 func TestValidateBootstrapParameters(t *testing.T) {
 	optionTests := []struct {
-		name    string
-		gitRepo string
-		errMsg  string
+		name       string
+		devGitRepo string
+		errMsg     string
 	}{
 		{"invalid repo", "test", "repo must be org/repo"},
 		{"valid repo", "test/repo", ""},
 	}
 
 	for _, tt := range optionTests {
-		o := BootstrapParameters{gitRepo: tt.gitRepo, prefix: "test"}
+		o := BootstrapParameters{devGitRepo: tt.devGitRepo, prefix: "test"}
 
 		err := o.Validate()
 

@@ -48,7 +48,8 @@ var (
 type BootstrapParameters struct {
 	DeploymentPath           string
 	GithubToken              string
-	GitRepo                  string
+	DevGitRepo               string
+	StageGitRepo             string
 	InternalRegistryHostname string
 	ImageRepo                string
 	Prefix                   string
@@ -108,8 +109,11 @@ func Bootstrap(o *BootstrapParameters) error {
 	// Create Pipelines
 	outputs = append(outputs, createPipelines(namespaces, isInternalRegistry, o.DeploymentPath)...)
 
+	if o.StageGitRepo == "" {
+		o.StageGitRepo = o.DevGitRepo + "-stage-config"
+	}
 	// Create Event Listener
-	eventListener := eventlisteners.Generate(o.GitRepo, namespaces["cicd"], saName)
+	eventListener := eventlisteners.Generate(o.DevGitRepo, o.StageGitRepo, namespaces["cicd"], saName)
 	outputs = append(outputs, eventListener)
 
 	// Create route

@@ -19,8 +19,7 @@ const (
 )
 
 // Generate will create the required eventlisteners.
-func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
-	githubStageRepo := githubRepo + "-stage-config"
+func Generate(githubDevRepo, githubStageRepo, ns, saName string) triggersv1.EventListener {
 	return triggersv1.EventListener{
 		TypeMeta:   createListenerTypeMeta(),
 		ObjectMeta: createListenerObjectMeta("cicd-event-listener", ns),
@@ -30,14 +29,14 @@ func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
 				createListenerTrigger(
 					"dev-ci-build-from-pr",
 					devCIBuildFilters,
-					githubRepo,
+					githubDevRepo,
 					"github-pr-binding",
 					"dev-ci-build-from-pr-template",
 				),
 				createListenerTrigger(
 					"dev-cd-deploy-from-master",
 					devCDDeployFilters,
-					githubRepo,
+					githubDevRepo,
 					"github-push-binding",
 					"dev-cd-deploy-from-master-template",
 				),

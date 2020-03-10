@@ -30,12 +30,13 @@ var (
 type BootstrapParameters struct {
 	deploymentPath           string
 	githubToken              string
-	gitRepo                  string // e.g. tekton/triggers
+	devGitRepo               string // e.g. tekton/triggers
 	imageRepo                string
 	internalRegistryHostname string
 	prefix                   string // used to generate the environments in a shared cluster
 	dockerConfigJSONFileName string
 	skipChecks               bool
+	stageGitRepo             string
 	// generic context options common to all commands
 	*genericclioptions.Context
 }
@@ -59,8 +60,8 @@ func (bo *BootstrapParameters) Complete(name string, cmd *cobra.Command, args []
 // Validate validates the parameters of the BootstrapParameters.
 func (bo *BootstrapParameters) Validate() error {
 	// TODO: this won't work with GitLab as the repo can have more path elements.
-	if len(strings.Split(bo.gitRepo, "/")) != 2 {
-		return fmt.Errorf("repo must be org/repo: %s", bo.gitRepo)
+	if len(strings.Split(bo.devGitRepo, "/")) != 2 {
+		return fmt.Errorf("repo must be org/repo: %s", bo.devGitRepo)
 	}
 	return nil
 }
@@ -70,7 +71,8 @@ func (bo *BootstrapParameters) Run() error {
 	options := pipelines.BootstrapParameters{
 		DeploymentPath:           bo.deploymentPath,
 		GithubToken:              bo.githubToken,
-		GitRepo:                  bo.gitRepo,
+		DevGitRepo:               bo.devGitRepo,
+		StageGitRepo:             bo.stageGitRepo,
 		ImageRepo:                bo.imageRepo,
 		InternalRegistryHostname: bo.internalRegistryHostname,
 		Prefix:                   bo.prefix,
@@ -99,8 +101,9 @@ func NewCmdBootstrap(name, fullName string) *cobra.Command {
 	bootstrapCmd.Flags().StringVar(&o.githubToken, "github-token", "", "provide the Github token")
 	bootstrapCmd.MarkFlagRequired("github-token")
 	bootstrapCmd.Flags().StringVar(&o.dockerConfigJSONFileName, "dockerconfigjson", "", "Docker configuration json filename")
-	bootstrapCmd.Flags().StringVar(&o.gitRepo, "git-repo", "", "git repository in this form <username>/<repository>")
-	bootstrapCmd.MarkFlagRequired("git-repo")
+	bootstrapCmd.Flags().StringVar(&o.devGitRepo, "dev-git-repo", "", "dev git repository in this form <username>/<repository>")
+	bootstrapCmd.MarkFlagRequired("dev-git-repo")
+	bootstrapCmd.Flags().StringVar(&o.stageGitRepo, "stage-git-repo", "", "dev git repository in this form <username>/<repository>")
 	bootstrapCmd.Flags().StringVar(&o.imageRepo, "image-repo", "", "image repository in this form <registry>/<username>/<repository> or <project>/<app> for internal registry")
 	bootstrapCmd.MarkFlagRequired("image-repo")
 	bootstrapCmd.Flags().StringVar(&o.deploymentPath, "deployment-path", "deploy", "deployment folder path name")
