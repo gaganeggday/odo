@@ -1,5 +1,5 @@
 hash: 9c4bbc892d9fb869e6f12585b22f43f5a8e6fd038ce8fc991397232e6e92ed64
-updated: 2020-02-15T18:07:26.139236624+05:30
+updated: 2020-03-11T11:00:10.954827588+05:30
 imports:
 - name: github.com/alexbrainman/sspi
   version: e580b900e9f5657daa5473021296289be6da2661
@@ -413,12 +413,13 @@ imports:
   - assert
   - require
 - name: github.com/tektoncd/pipeline
-  version: 9d40d325b27a98ec496e9d0bc4d6f28ed078d0fc
+  version: 34d823820ce564920394a783e0892d25868a4d8f
   subpackages:
   - pkg/apis/config
   - pkg/apis/pipeline
   - pkg/apis/pipeline/pod
   - pkg/apis/pipeline/v1alpha1
+  - pkg/apis/pipeline/v1alpha2
   - pkg/apis/resource/v1alpha1
   - pkg/apis/validate
   - pkg/contexts
@@ -427,7 +428,7 @@ imports:
   - pkg/reconciler/pipeline/dag
   - pkg/substitution
 - name: github.com/tektoncd/triggers
-  version: 6fd954437e30a23124d869e0fc24673aad042af7
+  version: e43f662009e2267b78a0c90321b843d4e78bfc48
   subpackages:
   - pkg/apis/triggers/v1alpha1
 - name: github.com/xeipuuv/gojsonpointer
@@ -840,6 +841,8 @@ imports:
   - util/retry
 - name: k8s.io/klog
   version: 8139d8cb77af419532b33dfa7dd09fbc5f1d344f
+  subpackages:
+  - glog
 - name: k8s.io/kube-openapi
   version: 1fddd894a3d3e4eb9f4a20d5849e44102f30a419
   repo: https://github.com/openshift/kube-openapi.git

@@ -26,10 +26,10 @@ import (
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 )
 
-// ResolveParams takes a given trigger binding and produces the resulting
+// ResolveParams takes given triggerbindings and produces the resulting
 // resource params.
-func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header http.Header, params []pipelinev1.ParamSpec) ([]pipelinev1.Param, error) {
-	out, err := MergeBindingParams(bindings)
+func ResolveParams(rt ResolvedTrigger, body []byte, header http.Header) ([]pipelinev1.Param, error) {
+	out, err := MergeBindingParams(rt.TriggerBindings, rt.ClusterTriggerBindings)
 	if err != nil {
 		return nil, fmt.Errorf("error merging trigger params: %w", err)
 	}
@@ -38,7 +38,7 @@ func ResolveParams(bindings []*triggersv1.TriggerBinding, body []byte, header ht
 	if err != nil {
 		return nil, fmt.Errorf("failed to ApplyEventValuesToParams: %w", err)
 	}
-	return MergeInDefaultParams(out, params), nil
+	return MergeInDefaultParams(out, rt.TriggerTemplate.Spec.Params), nil
 }
 
 // ResolveResources resolves a templated resource by replacing params with their values.
@@ -46,7 +46,7 @@ func ResolveResources(template *triggersv1.TriggerTemplate, params []pipelinev1.
 	resources := make([]json.RawMessage, len(template.Spec.ResourceTemplates))
 	uid := UID()
 	for i := range template.Spec.ResourceTemplates {
-		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawMessage)
+		resources[i] = ApplyParamsToResourceTemplate(params, template.Spec.ResourceTemplates[i].RawExtension.Raw)
 		resources[i] = ApplyUIDToResourceTemplate(resources[i], uid)
 	}
 	return resources
@@ -88,13 +88,13 @@ func applyEventValuesToParams(params []pipelinev1.Param, body []byte, header htt
 	for idx, p := range params {
 		pValue := p.Value.StringVal
 		// Find all expressions wrapped in $() from the value
-		expressions := findTektonExpressions(pValue)
-		for _, expr := range expressions {
+		expressions, originals := findTektonExpressions(pValue)
+		for i, expr := range expressions {
 			val, err := ParseJSONPath(event, expr)
 			if err != nil {
 				return nil, fmt.Errorf("failed to replace JSONPath value for param %s: %s: %w", p.Name, p.Value, err)
 			}
-			pValue = strings.ReplaceAll(pValue, expr, val)
+			pValue = strings.ReplaceAll(pValue, originals[i], val)
 		}
 		params[idx].Value = pipelinev1.ArrayOrString{Type: pipelinev1.ParamTypeString, StringVal: pValue}
 	}

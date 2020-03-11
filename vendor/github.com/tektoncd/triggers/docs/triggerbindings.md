@@ -34,7 +34,7 @@ Each parameter has a `name` and a `value`.
 ## Event Variable Interpolation
 
 TriggerBindings can access values from the HTTP JSON body and the headers using
-JSONPath expressions wrapped in `$()`.
+JSONPath expressions wrapped in `$()`.  The key in the header is case-insensitive.  
 
 These are all valid expressions:
 
@@ -50,8 +50,8 @@ These are invalid expressions:
 $({body) # INVALID - Ending curly brace absent
 ```
 
-If the `$()` is embedded inside another `$()` we will use the contents of the innermost
-`$()` as the JSONPath expression
+If the `$()` is embedded inside another `$()` we will use the contents of the
+innermost `$()` as the JSONPath expression
 
 ```shell script
 $($(body.b)) -> $(body.b)
@@ -81,6 +81,8 @@ $(body.key4[0:2]) -> "{"value4", "value5"}"
 $(header) -> "{"One":["one"], "Two":["one","two","three"]}"
 
 $(header.One) -> "one"
+
+$(header.one) -> "one"
 
 $(header.Two) -> "one two three"
 

@@ -25,6 +25,7 @@ import (
 	"net/http"
 
 	pipelineclientset "github.com/tektoncd/pipeline/pkg/client/clientset/versioned"
+	resourceclientset "github.com/tektoncd/pipeline/pkg/client/resource/clientset/versioned"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	triggersclientset "github.com/tektoncd/triggers/pkg/client/clientset/versioned"
 	"github.com/tektoncd/triggers/pkg/interceptors"
@@ -49,6 +50,7 @@ type Sink struct {
 	DiscoveryClient        discoveryclient.ServerResourcesInterface
 	DynamicClient          dynamic.Interface
 	PipelineClient         pipelineclientset.Interface
+	ResourceClient         resourceclientset.Interface
 	HTTPClient             *http.Client
 	EventListenerName      string
 	EventListenerNamespace string
@@ -133,13 +135,14 @@ func (r Sink) processTrigger(t *triggersv1.EventListenerTrigger, request *http.R
 
 	rt, err := template.ResolveTrigger(*t,
 		r.TriggersClient.TektonV1alpha1().TriggerBindings(r.EventListenerNamespace).Get,
+		r.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().Get,
 		r.TriggersClient.TektonV1alpha1().TriggerTemplates(r.EventListenerNamespace).Get)
 	if err != nil {
 		log.Error(err)
 		return err
 	}
 
-	params, err := template.ResolveParams(rt.TriggerBindings, finalPayload, header, rt.TriggerTemplate.Spec.Params)
+	params, err := template.ResolveParams(rt, finalPayload, header)
 	if err != nil {
 		log.Error(err)
 		return err
@@ -160,6 +163,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 
 	// The request body to the first interceptor in the chain should be the received event body.
 	request := &http.Request{
+		Method: http.MethodPost,
 		Header: in.Header,
 		Body:   ioutil.NopCloser(bytes.NewBuffer(event)),
 	}
@@ -187,6 +191,7 @@ func (r Sink) executeInterceptors(t *triggersv1.EventListenerTrigger, in *http.R
 		// Set the next request to be the output of the last response to enable
 		// request chaining.
 		request = &http.Request{
+			Method: http.MethodPost,
 			Header: resp.Header,
 			Body:   ioutil.NopCloser(resp.Body),
 		}

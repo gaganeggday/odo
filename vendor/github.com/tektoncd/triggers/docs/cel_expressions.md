@@ -3,6 +3,10 @@
 The CEL expression is configured to expose parts of the request, and some custom
 functions to make matching easier.
 
+In addition to the custom function extension listed below, you can craft any
+valid CEL expression as defined by the
+[cel-spec language definition](https://github.com/google/cel-spec/blob/master/doc/langdef.md)
+
 ### List of extensions
 
 The body from the `http.Request` value is decoded to JSON and exposed, and the
@@ -79,6 +83,61 @@ interceptor.
     </td>
     <td>
      <pre>header.match('x-test', 'test-value')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      truncate
+    </th>
+    <td>
+      (string, uint) -> string
+    </td>
+    <td>
+      Truncates a string to no more than the specified length.
+    </td>
+    <td>
+     <pre>truncate(body.commit.sha, 5)</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      split
+    </th>
+    <td>
+      (string, string) -> string(dyn)
+    </td>
+    <td>
+      Splits a string on the provided separator value.
+    </td>
+    <td>
+     <pre>split(body.ref, '/')</pre>
+    </td>
+  </tr>
+    <th>
+      canonical
+    </th>
+    <td>
+      header.(string) -> string
+    </td>
+    <td>
+      Uses the canonical header matching from Go's http.Request to get the provided header name.
+    </td>
+    <td>
+     <pre>header.canonical('x-test')</pre>
+    </td>
+  </tr>
+  <tr>
+    <th>
+      decodeb64
+    </th>
+    <td>
+      (string) -> string
+    </td>
+    <td>
+      Decodes a base64 encoded string.
+    </td>
+    <td>
+     <pre>decodeb64(body.message.data)</pre>
     </td>
   </tr>
 </table>

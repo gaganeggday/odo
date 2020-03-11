@@ -117,7 +117,7 @@ func TestHandleEvent(t *testing.T) {
 			bldr.TriggerTemplateParam("appLabel", "", "foo"),
 			bldr.TriggerTemplateParam("contenttype", "", ""),
 			bldr.TriggerTemplateParam("foo", "", ""),
-			bldr.TriggerResourceTemplate(json.RawMessage(pipelineResourceBytes)),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
 		))
 	var tbs []*triggersv1.TriggerBinding
 	var triggers []bldr.EventListenerSpecOp
@@ -134,7 +134,9 @@ func TestHandleEvent(t *testing.T) {
 			))
 		tbs = append(tbs, tb)
 		// Add TriggerBinding to trigger in EventListener
-		trigger := bldr.EventListenerTrigger(tbName, "my-triggertemplate", "v1alpha1")
+		trigger := bldr.EventListenerTrigger("my-triggertemplate", "v1alpha1",
+			bldr.EventListenerTriggerBinding(tbName, "", "v1alpha1"),
+		)
 		triggers = append(triggers, trigger)
 	}
 	el := bldr.EventListener("my-eventlistener", namespace, bldr.EventListenerSpec(triggers...))
@@ -146,7 +148,6 @@ func TestHandleEvent(t *testing.T) {
 	if _, err := triggersClient.TektonV1alpha1().TriggerTemplates(namespace).Create(tt); err != nil {
 		t.Fatalf("Error creating TriggerTemplate: %s", err)
 	}
-	// for _, tb := range []*triggersv1.TriggerBinding{tb, tb2, tb3} {
 	for _, tb := range tbs {
 		if _, err := triggersClient.TektonV1alpha1().TriggerBindings(namespace).Create(tb); err != nil {
 			t.Fatalf("Error creating TriggerBinding %s: %s", tb.GetName(), err)
@@ -213,7 +214,6 @@ func TestHandleEvent(t *testing.T) {
 	if waitTimeout(&wg, time.Second) {
 		t.Fatalf("timed out waiting for reactor to fire")
 	}
-	// var wantResources []pipelinev1.PipelineResource
 	gvr := schema.GroupVersionResource{
 		Group:    "tekton.dev",
 		Version:  "v1alpha1",
@@ -285,7 +285,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 	tt := bldr.TriggerTemplate("tt", namespace,
 		bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("url", "", ""),
-			bldr.TriggerResourceTemplate(pipelineResourceBytes),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: pipelineResourceBytes}),
 		))
 	tb := bldr.TriggerBinding("tb", namespace,
 		bldr.TriggerBindingSpec(
@@ -299,7 +299,7 @@ func TestHandleEventWithInterceptors(t *testing.T) {
 		},
 		Spec: triggersv1.EventListenerSpec{
 			Triggers: []triggersv1.EventListenerTrigger{{
-				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb"}},
+				Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
 				Template: triggersv1.EventListenerTemplate{Name: "tt"},
 				Interceptors: []*triggersv1.EventInterceptor{{
 					GitHub: &triggersv1.GitHubInterceptor{
@@ -493,7 +493,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	tt := bldr.TriggerTemplate("tt", namespace,
 		bldr.TriggerTemplateSpec(
 			bldr.TriggerTemplateParam("name", "", ""),
-			bldr.TriggerResourceTemplate(resourceTemplateBytes),
+			bldr.TriggerResourceTemplate(runtime.RawExtension{Raw: resourceTemplateBytes}),
 		))
 	tb := bldr.TriggerBinding("tb", namespace,
 		bldr.TriggerBindingSpec(
@@ -508,7 +508,7 @@ func TestHandleEventWithWebhookInterceptors(t *testing.T) {
 	var triggers []triggersv1.EventListenerTrigger
 	for i := 0; i < numTriggers; i++ {
 		trigger := triggersv1.EventListenerTrigger{
-			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb"}},
+			Bindings: []*triggersv1.EventListenerBinding{{Name: "tb", Kind: "TriggerBinding"}},
 			Template: triggersv1.EventListenerTemplate{Name: "tt"},
 			Interceptors: []*triggersv1.EventInterceptor{{
 				Webhook: &triggersv1.WebhookInterceptor{
@@ -643,6 +643,10 @@ type sequentialInterceptor struct {
 
 func (f *sequentialInterceptor) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	f.called = true
+	if r.Method != http.MethodPost {
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		return
+	}
 	var data map[string]int
 	if err := json.NewDecoder(r.Body).Decode(&data); err != nil {
 		w.WriteHeader(http.StatusInternalServerError)
@@ -697,25 +701,39 @@ func TestExecuteInterceptor(t *testing.T) {
 		Interceptors: []*triggersv1.EventInterceptor{a, a},
 	}
 
-	req, err := http.NewRequest(http.MethodPost, "/", nil)
-	if err != nil {
-		t.Fatalf("http.NewRequest: %v", err)
-	}
-	resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), "", logger)
-	if err != nil {
-		t.Fatalf("executeInterceptors: %v", err)
-	}
+	for _, method := range []string{
+		http.MethodGet,
+		http.MethodHead,
+		http.MethodPost,
+		http.MethodPut,
+		http.MethodPatch,
+		http.MethodDelete,
+		http.MethodConnect,
+		http.MethodOptions,
+		http.MethodTrace,
+	} {
+		t.Run(method, func(t *testing.T) {
+			req, err := http.NewRequest(method, "/", nil)
+			if err != nil {
+				t.Fatalf("http.NewRequest: %v", err)
+			}
+			resp, header, err := r.executeInterceptors(trigger, req, []byte(`{}`), "", logger)
+			if err != nil {
+				t.Fatalf("executeInterceptors: %v", err)
+			}
 
-	var got map[string]int
-	if err := json.Unmarshal(resp, &got); err != nil {
-		t.Fatalf("json.Unmarshal: %v", err)
-	}
-	want := map[string]int{"i": 2}
-	if diff := cmp.Diff(want, got); diff != "" {
-		t.Errorf("Body: -want +got: %s", diff)
-	}
-	if diff := cmp.Diff([]string{"1", "2"}, header["Foo"]); diff != "" {
-		t.Errorf("Header: -want +got: %s", diff)
+			var got map[string]int
+			if err := json.Unmarshal(resp, &got); err != nil {
+				t.Fatalf("json.Unmarshal: %v", err)
+			}
+			want := map[string]int{"i": 2}
+			if diff := cmp.Diff(want, got); diff != "" {
+				t.Errorf("Body: -want +got: %s", diff)
+			}
+			if diff := cmp.Diff([]string{"1", "2"}, header["Foo"]); diff != "" {
+				t.Errorf("Header: -want +got: %s", diff)
+			}
+		})
 	}
 }
 

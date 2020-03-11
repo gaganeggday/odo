@@ -21,6 +21,7 @@ package test
 import (
 	"flag"
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
@@ -97,9 +98,11 @@ func tearDown(t *testing.T, cs *clients, namespace string) {
 		}
 	}
 
-	t.Logf("Deleting namespace %s", namespace)
-	if err := cs.KubeClient.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
-		t.Errorf("Failed to delete namespace %s: %s", namespace, err)
+	if os.Getenv("TEST_KEEP_NAMESPACES") == "" {
+		t.Logf("Deleting namespace %s", namespace)
+		if err := cs.KubeClient.CoreV1().Namespaces().Delete(namespace, &metav1.DeleteOptions{}); err != nil {
+			t.Errorf("Failed to delete namespace %s: %s", namespace, err)
+		}
 	}
 }
 
@@ -165,6 +168,14 @@ func getCRDYaml(cs *clients, ns string) ([]byte, error) {
 		}
 		output = append(output, []byte("\n---\n")...)
 		output = append(output, bs...)
+	}
+
+	ctbs, err := cs.TriggersClient.TektonV1alpha1().ClusterTriggerBindings().List(metav1.ListOptions{})
+	if err != nil {
+		return nil, xerrors.Errorf("could not get ClusterTriggerBindings: %w", err)
+	}
+	for _, i := range ctbs.Items {
+		printOrAdd("ClusterTriggerBinding", i.Name, i)
 	}
 
 	els, err := cs.TriggersClient.TektonV1alpha1().EventListeners(ns).List(metav1.ListOptions{})

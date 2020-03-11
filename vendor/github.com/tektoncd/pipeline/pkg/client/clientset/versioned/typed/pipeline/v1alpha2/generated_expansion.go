@@ -18,7 +18,11 @@ limitations under the License.
 
 package v1alpha2
 
+type ClusterTaskExpansion interface{}
+
 type PipelineExpansion interface{}
+
+type PipelineRunExpansion interface{}
 
 type TaskExpansion interface{}
 
