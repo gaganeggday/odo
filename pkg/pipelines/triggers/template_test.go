@@ -7,6 +7,7 @@ import (
 	"github.com/openshift/odo/pkg/pipelines/meta"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
@@ -31,7 +32,9 @@ func TestCreateDevCDDeployTemplate(t *testing.T) {
 
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCDResourcetemplate(serviceAccName, "example.com:5000/testing/testing"),
+					RawExtension: runtime.RawExtension{
+						Raw: createDevCDResourcetemplate(serviceAccName, "example.com:5000/testing/testing"),
+					},
 				},
 			},
 		},
@@ -70,7 +73,9 @@ func TestCreatedevCIBuildPRTemplate(t *testing.T) {
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCIResourceTemplate(serviceAccName, "example.com:5000/testing/testing"),
+					RawExtension: runtime.RawExtension{
+						Raw: createDevCIResourceTemplate(serviceAccName, "example.com:5000/testing/testing"),
+					},
 				},
 			},
 		},
@@ -102,7 +107,9 @@ func TestCreateStageCDPushTemplate(t *testing.T) {
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createStageCDResourceTemplate(serviceAccName),
+					RawExtension: runtime.RawExtension{
+						Raw: createStageCDResourceTemplate(serviceAccName),
+					},
 				},
 			},
 		},
@@ -135,7 +142,9 @@ func TestCreateStageCIdryrunptemplate(t *testing.T) {
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createStageCIResourceTemplate(serviceAccName),
+					RawExtension: runtime.RawExtension{
+						Raw: createStageCIResourceTemplate(serviceAccName),
+					},
 				},
 			},
 		},

@@ -111,6 +111,7 @@ func createListenerTemplate(name string) triggersv1.EventListenerTemplate {
 
 func createListenerBinding(name string) *triggersv1.EventListenerBinding {
 	return &triggersv1.EventListenerBinding{
+		Kind: triggersv1.NamespacedTriggerBindingKind,
 		Name: name,
 	}
 }

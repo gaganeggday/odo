@@ -7,6 +7,7 @@ import (
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
 	triggersv1 "github.com/tektoncd/triggers/pkg/apis/triggers/v1alpha1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
@@ -37,7 +38,9 @@ func createDevCDDeployTemplate(ns, saName, imageRepo string) triggersv1.TriggerT
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCDResourcetemplate(saName, imageRepo),
+					RawExtension: runtime.RawExtension{
+						Raw: createDevCDResourcetemplate(saName, imageRepo),
+					},
 				},
 			},
 		},
@@ -58,7 +61,9 @@ func createDevCIBuildPRTemplate(ns, saName, imageRepo string) triggersv1.Trigger
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createDevCIResourceTemplate(saName, imageRepo),
+					RawExtension: runtime.RawExtension{
+						Raw: createDevCIResourceTemplate(saName, imageRepo),
+					},
 				},
 			},
 		},
@@ -78,7 +83,9 @@ func createStageCDPushTemplate(ns, saName string) triggersv1.TriggerTemplate {
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createStageCDResourceTemplate(saName),
+					RawExtension: runtime.RawExtension{
+						Raw: createStageCDResourceTemplate(saName),
+					},
 				},
 			},
 		},
@@ -97,7 +104,9 @@ func createStageCIdryrunptemplate(ns, saName string) triggersv1.TriggerTemplate 
 			},
 			ResourceTemplates: []triggersv1.TriggerResourceTemplate{
 				triggersv1.TriggerResourceTemplate{
-					RawMessage: createStageCIResourceTemplate(saName),
+					RawExtension: runtime.RawExtension{
+						Raw: createStageCIResourceTemplate(saName),
+					},
 				},
 			},
 		},

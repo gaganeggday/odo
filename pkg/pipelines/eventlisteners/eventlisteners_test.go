@@ -172,7 +172,7 @@ func TestCreateListenerTrigger(t *testing.T) {
 			Name: "sampleTemplateName",
 		},
 	}
-	listenerTrigger := createListenerTrigger("sampleName", "sampleFilter %s", "sample", "sampleBindingName", "sampleTemplateName")
+	listenerTrigger := createListenerTrigger("sampleName", "sampleFilter %s", "sample", "github-pr-binding", "sampleTemplateName")
 	if diff := cmp.Diff(validListenerTrigger, listenerTrigger); diff != "" {
 		t.Fatalf("createListenerTrigger() failed:\n%s", diff)
 	}
@@ -182,10 +182,44 @@ func TestCreateEventInterceptor(t *testing.T) {
 	validEventInterceptor := triggersv1.EventInterceptor{
 		CEL: &triggersv1.CELInterceptor{
 			Filter: "sampleFilter sample",
+			Overlays: []triggersv1.CELOverlay{
+				addOverlay("gitsha", "github-pr-binding"),
+			},
 		},
 	}
-	eventInterceptor := createEventInterceptor("sampleFilter %s", "sample")
+	eventInterceptor := createEventInterceptor("sampleFilter %s", "sample", "github-pr-binding")
 	if diff := cmp.Diff(validEventInterceptor, *eventInterceptor); diff != "" {
 		t.Fatalf("createEventInterceptor() failed:\n%s", diff)
 	}
+}
+
+func TestAddOverlays(t *testing.T) {
+	tests := []struct {
+		binding      string
+		description  string
+		validOverlay triggersv1.CELOverlay
+	}{
+		{
+			githubPrBinding,
+			"overlays for github pr binding",
+			triggersv1.CELOverlay{
+				Key:        "gitsha",
+				Expression: "truncate(body.pull_request.head.sha,5)",
+			},
+		},
+		{
+			githubPushBinding,
+			"overlays for github push binding",
+			triggersv1.CELOverlay{
+				Key:        "gitsha",
+				Expression: "truncate(body.head_commit.id,5)",
+			},
+		},
+	}
+	for _, test := range tests {
+		if diff := cmp.Diff(test.validOverlay, addOverlay("gitsha", test.binding)); diff != "" {
+			t.Fatalf("addOverlay() failed:\n%v", diff)
+		}
+	}
+
 }

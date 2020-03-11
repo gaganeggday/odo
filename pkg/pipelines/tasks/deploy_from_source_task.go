@@ -3,6 +3,7 @@ package tasks
 import (
 	"github.com/openshift/odo/pkg/pipelines/meta"
 	pipelinev1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha1"
+	"github.com/tektoncd/pipeline/pkg/apis/pipeline/v1alpha2"
 )
 
 func generateDeployFromSourceTask(ns string) pipelinev1.Task {
@@ -11,7 +12,9 @@ func generateDeployFromSourceTask(ns string) pipelinev1.Task {
 		ObjectMeta: meta.ObjectMeta(meta.NamespacedName(ns, "deploy-from-source-task")),
 		Spec: pipelinev1.TaskSpec{
 			Inputs: createInputsForDeployFromSourceTask(),
-			Steps:  createStepsForDeployFromSourceTask(),
+			TaskSpec: v1alpha2.TaskSpec{
+				Steps: createStepsForDeployFromSourceTask(),
+			},
 		},
 	}
 	return task
