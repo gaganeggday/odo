@@ -31,6 +31,9 @@ func TestGenerateEventListener(t *testing.T) {
 						&triggersv1.EventInterceptor{
 							CEL: &triggersv1.CELInterceptor{
 								Filter: "(header.match('X-GitHub-Event', 'pull_request') && body.action == 'opened' || body.action == 'synchronize') && body.pull_request.head.repo.full_name == 'sample'",
+								Overlays: []triggersv1.CELOverlay{
+									addOverlay("gitsha", "github-pr-binding"),
+								},
 							},
 						},
 					},
@@ -49,6 +52,9 @@ func TestGenerateEventListener(t *testing.T) {
 						&triggersv1.EventInterceptor{
 							CEL: &triggersv1.CELInterceptor{
 								Filter: "(header.match('X-GitHub-Event', 'push') && body.repository.full_name == 'sample') && body.ref.startsWith('refs/heads/master')",
+								Overlays: []triggersv1.CELOverlay{
+									addOverlay("gitsha", "github-push-binding"),
+								},
 							},
 						},
 					},
@@ -67,6 +73,9 @@ func TestGenerateEventListener(t *testing.T) {
 						&triggersv1.EventInterceptor{
 							CEL: &triggersv1.CELInterceptor{
 								Filter: "(header.match('X-GitHub-Event', 'pull_request') && body.action == 'opened' || body.action == 'synchronize') && body.pull_request.head.repo.full_name == 'sample-stage-config'",
+								Overlays: []triggersv1.CELOverlay{
+									addOverlay("gitsha", "github-pr-binding"),
+								},
 							},
 						},
 					},
@@ -85,6 +94,9 @@ func TestGenerateEventListener(t *testing.T) {
 						&triggersv1.EventInterceptor{
 							CEL: &triggersv1.CELInterceptor{
 								Filter: "(header.match('X-GitHub-Event', 'push') && body.repository.full_name == 'sample-stage-config') && body.ref.startsWith('refs/heads/master')",
+								Overlays: []triggersv1.CELOverlay{
+									addOverlay("gitsha", "github-push-binding"),
+								},
 							},
 						},
 					},
@@ -145,12 +157,15 @@ func TestCreateListenerTrigger(t *testing.T) {
 			&triggersv1.EventInterceptor{
 				CEL: &triggersv1.CELInterceptor{
 					Filter: "sampleFilter sample",
+					Overlays: []triggersv1.CELOverlay{
+						addOverlay("gitsha", "github-pr-binding"),
+					},
 				},
 			},
 		},
 		Bindings: []*triggersv1.EventListenerBinding{
 			&triggersv1.EventListenerBinding{
-				Name: "sampleBindingName",
+				Name: "github-pr-binding",
 			},
 		},
 		Template: triggersv1.EventListenerTemplate{

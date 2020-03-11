@@ -18,6 +18,11 @@ const (
 	stageCDDeployFilters = "(header.match('X-GitHub-Event', 'push') && body.repository.full_name == '%s') && body.ref.startsWith('refs/heads/master')"
 )
 
+var (
+	githubPrBinding   = "github-pr-binding"
+	githubPushBinding = "github-push-binding"
+)
+
 // Generate will create the required eventlisteners.
 func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
 	githubStageRepo := githubRepo + "-stage-config"
@@ -31,28 +36,28 @@ func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
 					"dev-ci-build-from-pr",
 					devCIBuildFilters,
 					githubRepo,
-					"github-pr-binding",
+					githubPrBinding,
 					"dev-ci-build-from-pr-template",
 				),
 				createListenerTrigger(
 					"dev-cd-deploy-from-master",
 					devCDDeployFilters,
 					githubRepo,
-					"github-push-binding",
+					githubPushBinding,
 					"dev-cd-deploy-from-master-template",
 				),
 				createListenerTrigger(
 					"stage-ci-dryrun-from-pr",
 					stageCIDryRunFilters,
 					githubStageRepo,
-					"github-pr-binding",
+					githubPrBinding,
 					"stage-ci-dryrun-from-pr-template",
 				),
 				createListenerTrigger(
 					"stage-cd-deploy-from-push",
 					stageCDDeployFilters,
 					githubStageRepo,
-					"github-push-binding",
+					githubPushBinding,
 					"stage-cd-deploy-from-push-template",
 				),
 			},
@@ -60,19 +65,36 @@ func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
 	}
 }
 
-func createEventInterceptor(filter string, repoName string) *triggersv1.EventInterceptor {
+func createEventInterceptor(filter, repoName, binding string) *triggersv1.EventInterceptor {
 	return &triggersv1.EventInterceptor{
 		CEL: &triggersv1.CELInterceptor{
 			Filter: fmt.Sprintf(filter, repoName),
+			Overlays: []triggersv1.CELOverlay{
+				addOverlay("gitsha", binding),
+			},
 		},
 	}
+}
+
+func addOverlay(key, binding string) triggersv1.CELOverlay {
+	return triggersv1.CELOverlay{
+		Key:        key,
+		Expression: getOverlayExpression(binding),
+	}
+}
+
+func getOverlayExpression(binding string) string {
+	if binding == githubPrBinding {
+		return fmt.Sprintf("truncate(%v,5)", "body.pull_request.head.sha")
+	}
+	return fmt.Sprintf("truncate(%v,5)", "body.head_commit.id")
 }
 
 func createListenerTrigger(name string, filter string, repoName string, binding string, template string) triggersv1.EventListenerTrigger {
 	return triggersv1.EventListenerTrigger{
 		Name: name,
 		Interceptors: []*triggersv1.EventInterceptor{
-			createEventInterceptor(filter, repoName),
+			createEventInterceptor(filter, repoName, binding),
 		},
 		Bindings: []*triggersv1.EventListenerBinding{
 			createListenerBinding(binding),
