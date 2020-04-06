@@ -15,6 +15,7 @@ const RecommendedCommandName = "pipelines"
 func NewCmdComponent(name, fullName string) *cobra.Command {
 
 	initCmd := NewCmdInit(InitRecommendedCommandName, odoutil.GetFullName(fullName, InitRecommendedCommandName))
+	addCmd := NewCmdAdd(AddRecommendedCommandName, odoutil.GetFullName(fullName, AddRecommendedCommandName))
 	var pipelinesCmd = &cobra.Command{
 		Use:   name,
 		Short: "Manage pipelines",
@@ -25,7 +26,7 @@ func NewCmdComponent(name, fullName string) *cobra.Command {
 	}
 
 	pipelinesCmd.Flags().AddFlagSet(initCmd.Flags())
-	pipelinesCmd.AddCommand(initCmd)
+	pipelinesCmd.AddCommand(initCmd, addCmd)
 
 	pipelinesCmd.Annotations = map[string]string{"command": "main"}
 	pipelinesCmd.SetUsageTemplate(odoutil.CmdUsageTemplate)

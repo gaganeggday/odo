@@ -1,0 +1,18 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  creationTimestamp: null
+  name: github-pr-binding
+  namespace: gitops-cicd-environment
+spec:
+  params:
+  - name: gitref
+    value: $(body.pull_request.head.ref)
+  - name: gitsha
+    value: $(body.pull_request.head.sha)
+  - name: gitrepositoryurl
+    value: $(body.repository.clone_url)
+  - name: fullname
+    value: $(body.repository.full_name)
+status: {}
+---

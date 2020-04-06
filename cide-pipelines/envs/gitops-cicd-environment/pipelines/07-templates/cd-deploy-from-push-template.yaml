@@ -1,0 +1,35 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerTemplate
+metadata:
+  creationTimestamp: null
+  name: cd-deploy-from-push-template
+  namespace: gitops-cicd-environment
+spec:
+  params:
+  - default: master
+    description: The git revision
+    name: gitref
+  - description: The git repository url
+    name: gitrepositoryurl
+  resourcetemplates:
+  - apiVersion: tekton.dev/v1alpha1
+    kind: PipelineRun
+    metadata:
+      creationTimestamp: null
+      name: cd-deploy-from-push-pipeline-$(uid)
+    spec:
+      pipelineRef:
+        name: cd-deploy-from-push-pipeline
+      resources:
+      - name: source-repo
+        resourceSpec:
+          params:
+          - name: revision
+            value: $(params.gitref)
+          - name: url
+            value: $(params.gitrepositoryurl)
+          type: git
+      serviceAccountName: pipeline
+    status: {}
+status: {}
+---

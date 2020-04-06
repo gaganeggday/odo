@@ -172,6 +172,7 @@ func createPipelineResources(outputs map[string]interface{}, namespaces map[stri
 func writeResources(path string, files map[string]interface{}) ([]string, error) {
 	filenames := make([]string, 0)
 	for filename, item := range files {
+
 		err := marshalItemsToFile(filepath.Join(path, filename), list(item))
 		if err != nil {
 			return nil, err
@@ -205,6 +206,7 @@ func getPipelinesDir(rootPath, prefix string) string {
 func addKustomize(name string, items []string, path string) error {
 	content := make([]interface{}, 0)
 	content = append(content, map[string]interface{}{name: items})
+
 	return marshalItemsToFile(path, content)
 }
 

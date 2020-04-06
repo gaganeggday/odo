@@ -1,0 +1,31 @@
+- Op: Name
+  Path: SomePath
+  Value:
+    bindings:
+    - name: sampleBindingName
+    interceptors:
+    - cel:
+        filter: sampleFilter%!(EXTRA string=sample)
+    - github:
+        secretRef:
+          secretKey: webhook-secret-key
+          secretName: gitops-webhook-secret
+    name: sampleName
+    template:
+      name: sampleTemplateName
+- Op: Name
+  Path: SomePath
+  Value:
+    bindings:
+    - name: sampleBindingName
+    interceptors:
+    - cel:
+        filter: sampleFilter%!(EXTRA string=sample)
+    - github:
+        secretRef:
+          secretKey: webhook-secret-key
+          secretName: gitops-webhook-secret
+    name: sampleName
+    template:
+      name: sampleTemplateName
+---

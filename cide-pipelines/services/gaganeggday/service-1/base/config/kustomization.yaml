@@ -1,0 +1,7 @@
+resources:
+- secret.yaml
+- serviceaccount.yaml
+---
+bases:
+- ../../../../envs/chetan-cicd-environment/overlays/
+---

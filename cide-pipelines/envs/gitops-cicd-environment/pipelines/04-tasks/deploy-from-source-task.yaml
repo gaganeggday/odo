@@ -1,0 +1,38 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Task
+metadata:
+  creationTimestamp: null
+  name: deploy-from-source-task
+  namespace: gitops-cicd-environment
+spec:
+  inputs:
+    params:
+    - default: envs/gitops-cicd-environment/pipelines
+      description: Path to the manifest to apply
+      name: PATHTODEPLOYMENT
+      type: string
+    - description: Namespace to deploy into
+      name: NAMESPACE
+      type: string
+    - default: "false"
+      description: If true run a server-side dryrun.
+      name: DRYRUN
+      type: string
+    resources:
+    - name: source
+      type: git
+  steps:
+  - args:
+    - apply
+    - --dry-run=$(inputs.params.DRYRUN)
+    - -n
+    - $(inputs.params.NAMESPACE)
+    - -k
+    - $(inputs.params.PATHTODEPLOYMENT)
+    command:
+    - kubectl
+    image: quay.io/redhat-developer/k8s-kubectl
+    name: run-kubectl
+    resources: {}
+    workingDir: /workspace/source
+---

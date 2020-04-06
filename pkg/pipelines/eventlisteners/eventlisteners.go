@@ -31,14 +31,14 @@ func Generate(githubRepo, ns, saName string) triggersv1.EventListener {
 		Spec: triggersv1.EventListenerSpec{
 			ServiceAccountName: saName,
 			Triggers: []triggersv1.EventListenerTrigger{
-				createListenerTrigger(
+				CreateListenerTrigger(
 					"ci-dryrun-from-pr",
 					stageCIDryRunFilters,
 					githubRepo,
 					"github-pr-binding",
 					"ci-dryrun-from-pr-template",
 				),
-				createListenerTrigger(
+				CreateListenerTrigger(
 					"cd-deploy-from-push",
 					stageCDDeployFilters,
 					githubRepo,
@@ -69,7 +69,7 @@ func createGitHubInterceptor() *triggersv1.EventInterceptor {
 	}
 }
 
-func createListenerTrigger(name string, filter string, repoName string, binding string, template string) triggersv1.EventListenerTrigger {
+func CreateListenerTrigger(name string, filter string, repoName string, binding string, template string) triggersv1.EventListenerTrigger {
 	return triggersv1.EventListenerTrigger{
 		Name: name,
 		Interceptors: []*triggersv1.EventInterceptor{

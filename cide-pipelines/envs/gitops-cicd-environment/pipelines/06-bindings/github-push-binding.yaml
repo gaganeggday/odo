@@ -1,0 +1,16 @@
+apiVersion: tekton.dev/v1alpha1
+kind: TriggerBinding
+metadata:
+  creationTimestamp: null
+  name: github-push-binding
+  namespace: gitops-cicd-environment
+spec:
+  params:
+  - name: gitref
+    value: $(body.ref)
+  - name: gitsha
+    value: $(body.head_commit.id)
+  - name: gitrepositoryurl
+    value: $(body.repository.clone_url)
+status: {}
+---

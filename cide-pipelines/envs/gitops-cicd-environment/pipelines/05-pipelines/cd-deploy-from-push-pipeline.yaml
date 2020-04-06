@@ -1,0 +1,23 @@
+apiVersion: tekton.dev/v1alpha1
+kind: Pipeline
+metadata:
+  creationTimestamp: null
+  name: cd-deploy-from-push-pipeline
+  namespace: gitops-cicd-environment
+spec:
+  resources:
+  - name: source-repo
+    type: git
+  tasks:
+  - name: apply-source
+    params:
+    - name: NAMESPACE
+      value: gitops-cicd-environment
+    resources:
+      inputs:
+      - name: source
+        resource: source-repo
+    taskRef:
+      kind: Task
+      name: deploy-from-source-task
+---

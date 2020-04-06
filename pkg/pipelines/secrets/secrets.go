@@ -58,6 +58,7 @@ func seal(secret *corev1.Secret, getPubKey getPublicKey) (*ssv1alpha1.SealedSecr
 	secret.DeletionGracePeriodSeconds = nil
 
 	pubKey, err := getPubKey()
+
 	if err != nil {
 		return nil, fmt.Errorf("failed dto get public key from cluster: %w", err)
 	}

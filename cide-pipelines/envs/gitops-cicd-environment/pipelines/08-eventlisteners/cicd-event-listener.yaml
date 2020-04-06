@@ -1,0 +1,40 @@
+apiVersion: tekton.dev/v1alpha1
+kind: EventListener
+metadata:
+  creationTimestamp: null
+  name: cicd-event-listener
+  namespace: gitops-cicd-environment
+spec:
+  serviceAccountName: pipeline
+  triggers:
+  - bindings:
+    - name: github-pr-binding
+    interceptors:
+    - cel:
+        filter: (header.match('X-GitHub-Event', 'pull_request') && body.action ==
+          'opened' || body.action == 'synchronize') && body.pull_request.head.repo.full_name
+          == 'gaganeggday/cide-pipelines'
+    - github:
+        secretRef:
+          secretKey: webhook-secret-key
+          secretName: gitops-webhook-secret
+    name: ci-dryrun-from-pr
+    template:
+      name: ci-dryrun-from-pr-template
+  - bindings:
+    - name: github-push-binding
+    interceptors:
+    - cel:
+        filter: (header.match('X-GitHub-Event', 'push') && body.repository.full_name
+          == 'gaganeggday/cide-pipelines') && body.ref.startsWith('refs/heads/master')
+    - github:
+        secretRef:
+          secretKey: webhook-secret-key
+          secretName: gitops-webhook-secret
+    name: cd-deploy-from-push
+    template:
+      name: cd-deploy-from-push-template
+status:
+  configuration:
+    generatedName: ""
+---
