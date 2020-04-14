@@ -17,6 +17,7 @@ func NewCmdManifest(name, fullName string) *cobra.Command {
 
 	initCmd := NewCmdInit(InitRecommendedCommandName, odoutil.GetFullName(fullName, InitRecommendedCommandName))
 	envCmd := environment.NewCmdEnv(environment.EnvRecommendedCommandName, odoutil.GetFullName(fullName, environment.EnvRecommendedCommandName))
+	updateCmd := NewCmdUpdate(UpdateRecommendedCommandName, odoutil.GetFullName(fullName, UpdateRecommendedCommandName))
 
 	var manifestCmd = &cobra.Command{
 		Use:   name,
@@ -30,6 +31,7 @@ func NewCmdManifest(name, fullName string) *cobra.Command {
 	manifestCmd.Flags().AddFlagSet(initCmd.Flags())
 	manifestCmd.AddCommand(initCmd)
 	manifestCmd.AddCommand(envCmd)
+	manifestCmd.AddCommand(updateCmd)
 
 	manifestCmd.Annotations = map[string]string{"command": "main"}
 	manifestCmd.SetUsageTemplate(odoutil.CmdUsageTemplate)
