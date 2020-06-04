@@ -82,7 +82,7 @@ func TestBuildCreatesArgoCDWithMultipleApps(t *testing.T) {
 		Environments: []*config.Environment{
 			prodEnv,
 			testEnv,
-			&config.Environment{Name: "argocd", IsArgoCD: true},
+			{Name: "argocd", IsArgoCD: true},
 		},
 	}
 
@@ -104,7 +104,7 @@ func TestBuildWithNoRepoURL(t *testing.T) {
 	m := &config.Manifest{
 		Environments: []*config.Environment{
 			testEnv,
-			&config.Environment{Name: "argocd", IsArgoCD: true},
+			{Name: "argocd", IsArgoCD: true},
 		},
 	}
 
@@ -146,7 +146,7 @@ func TestBuildWithRepoConfig(t *testing.T) {
 	m := &config.Manifest{
 		Environments: []*config.Environment{
 			prodEnv,
-			&config.Environment{Name: "argocd", IsArgoCD: true},
+			{Name: "argocd", IsArgoCD: true},
 		},
 	}
 
@@ -170,6 +170,52 @@ func TestBuildWithRepoConfig(t *testing.T) {
 			},
 		},
 		"environments/argocd/config/kustomization.yaml": &res.Kustomization{Resources: []string{"test-production-prod-api-app.yaml"}},
+	}
+
+	if diff := cmp.Diff(want, files); diff != "" {
+		t.Fatalf("files didn't match: %s\n", diff)
+	}
+}
+
+func TestBuildAddsClusterToApp(t *testing.T) {
+	testEnv = &config.Environment{
+		Name:    "test-dev",
+		Cluster: "not.real.cluster",
+		Apps: []*config.Application{
+			testApp,
+		},
+	}
+
+	m := &config.Manifest{
+		Environments: []*config.Environment{
+			testEnv,
+			{
+				Name:     "argocd",
+				IsArgoCD: true,
+			},
+		},
+	}
+
+	files, err := Build(ArgoCDNamespace, testRepoURL, m)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	want := res.Resources{
+		"environments/argocd/config/test-dev-http-api-app.yaml": &argoappv1.Application{
+			TypeMeta:   applicationTypeMeta,
+			ObjectMeta: meta.ObjectMeta(meta.NamespacedName(ArgoCDNamespace, "test-dev-http-api")),
+			Spec: argoappv1.ApplicationSpec{
+				Source: makeSource(testEnv, testEnv.Apps[0], testRepoURL),
+				Destination: argoappv1.ApplicationDestination{
+					Server:    "not.real.cluster",
+					Namespace: "test-dev",
+				},
+				Project:    defaultProject,
+				SyncPolicy: syncPolicy,
+			},
+		},
+		"environments/argocd/config/kustomization.yaml": &res.Kustomization{Resources: []string{"test-dev-http-api-app.yaml"}},
 	}
 
 	if diff := cmp.Diff(want, files); diff != "" {
