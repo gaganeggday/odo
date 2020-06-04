@@ -111,6 +111,7 @@ func (m *Manifest) GetArgoCDEnvironment() (*Environment, error) {
 // The CICD environment should not have any applications defined.
 type Environment struct {
 	Name      string         `json:"name,omitempty"`
+	Cluster   string         `json:"cluster,omitempty"`
 	Pipelines *Pipelines     `json:"pipelines,omitempty"`
 	Services  []*Service     `json:"services,omitempty"`
 	Apps      []*Application `json:"apps,omitempty"`
